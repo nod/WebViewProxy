@@ -5,20 +5,59 @@ static NSPredicate* webViewUserAgentTest;
 static NSPredicate* webViewProxyLoopDetection;
 
 // A request matcher, which matches a UIWebView request to a registered WebViewProxyHandler
-@interface WVPRequestMatcher : NSObject
-@property (strong,nonatomic) NSPredicate* predicate;
+
+
+@interface WVRequestMatcher : NSObject
+
 @property (copy) WVPHandler handler;
-+ (WVPRequestMatcher*)matchWithPredicate:(NSPredicate*)predicate handler:(WVPHandler)handler;
+
++ (WVRequestMatcher*)matchWithPredicate:(NSPredicate *)predicate
+                              handler:(WVPHandler)handler;
+
++ (WVRequestMatcher*)matchWithTest:(BOOL (^)(NSURL *url)) testBlock
+                         handler:(WVPHandler)handler;
+
 @end
-@implementation WVPRequestMatcher
-@synthesize predicate=_predicate, handler=_handler;
-+ (WVPRequestMatcher*)matchWithPredicate:(NSPredicate *)predicate handler:(WVPHandler)handler {
-    WVPRequestMatcher* matcher = [[WVPRequestMatcher alloc] init];
+
+
+
+
+@interface WVPredicateRequestMatcher : WVRequestMatcher
+@property (strong,nonatomic) NSPredicate* predicate;
+@end
+
+@implementation WVPredicateRequestMatcher
+@end
+
+@interface WVTestRequestMatcher : WVRequestMatcher
+@property (copy) BOOL (^test)(NSURL *url);
+@end
+
+@implementation WVTestRequestMatcher
+
+@end
+
+
+@implementation WVRequestMatcher
++ (WVPredicateRequestMatcher*)matchWithPredicate:(NSPredicate *)predicate handler:(WVPHandler)handler {
+    WVPredicateRequestMatcher* matcher = [[WVPredicateRequestMatcher alloc] init];
     matcher.handler = handler;
     matcher.predicate = predicate;
     return matcher;
 }
++ (WVRequestMatcher*)matchWithTest:(BOOL (^)(NSURL *url)) testBlock
+                         handler:(WVPHandler)handler
+{
+    WVTestRequestMatcher *matcher = [[WVTestRequestMatcher alloc] init];
+    matcher.test = testBlock;
+    matcher.handler = handler;
+    return matcher;
+}
+
 @end
+
+
+
 
 // This is the proxy response object, through which we send responses
 @implementation WVPResponse {
@@ -205,25 +244,37 @@ static NSPredicate* webViewProxyLoopDetection;
 // The NSURLProtocol implementation that allows us to intercept requests.
 @interface WebViewProxyURLProtocol : NSURLProtocol
 @property (strong,nonatomic) WVPResponse* proxyResponse;
-@property (strong,nonatomic) WVPRequestMatcher* requestMatcher;
-+ (WVPRequestMatcher*)findRequestMatcher:(NSURL*)url;
+@property (strong,nonatomic) WVPredicateRequestMatcher* requestMatcher;
++ (WVPredicateRequestMatcher*)findRequestMatcher:(NSURL*)url;
 @end
 @implementation WebViewProxyURLProtocol {
     NSMutableURLRequest* _correctedRequest;
 }
 @synthesize proxyResponse=_proxyResponse, requestMatcher=_requestMatcher;
-+ (WVPRequestMatcher *)findRequestMatcher:(NSURL *)url {
-    for (WVPRequestMatcher* requestMatcher in requestMatchers) {
-        if ([requestMatcher.predicate evaluateWithObject:url]) {
-            return requestMatcher;
++ (WVRequestMatcher *)findRequestMatcher:(NSURL *)url {
+    for (WVRequestMatcher* requestMatcher in requestMatchers) {
+        
+        if ([requestMatchers isKindOfClass:[WVPredicateRequestMatcher class]]) {
+            if ([((WVPredicateRequestMatcher *)requestMatcher).predicate evaluateWithObject:url]) {
+                return requestMatcher;
+            }
+        } else if([requestMatcher isKindOfClass:[WVTestRequestMatcher class]]){
+            if ([(WVTestRequestMatcher *)requestMatcher test](url)) {
+                return requestMatcher;
+            }
         }
+        
     }
     return nil;
 }
 + (BOOL)canInitWithRequest:(NSURLRequest *)request {
     NSString* userAgent = request.allHTTPHeaderFields[@"User-Agent"];
     if (userAgent && ![webViewUserAgentTest evaluateWithObject:userAgent]) { return NO; }
-    if ([webViewProxyLoopDetection evaluateWithObject:request.URL]) { return NO; }
+    if ([webViewProxyLoopDetection evaluateWithObject:request.URL]) {
+    
+        return NO;
+    
+    }
     return ([self findRequestMatcher:request.URL] != nil);
 }
 + (NSURLRequest *)canonicalRequestForRequest:(NSURLRequest *)request {
@@ -298,8 +349,15 @@ static NSPredicate* webViewProxyLoopDetection;
 }
 + (void)handleRequestsMatching:(NSPredicate*)predicate handler:(WVPHandler)handler {
     // Match on any property of NSURL, e.g. "scheme MATCHES 'http' AND host MATCHES 'www.google.com'"
-    [requestMatchers addObject:[WVPRequestMatcher matchWithPredicate:predicate handler:handler]];
+    [requestMatchers addObject:[WVRequestMatcher matchWithPredicate:predicate handler:handler]];
 }
+
+
++(void)handleRequestsMatchingTest:(BOOL (^)(id))testBlock handler:(WVPHandler)handler
+{
+    [requestMatchers addObject:[WVRequestMatcher matchWithTest:testBlock handler:handler]];
+}
+
 + (NSString *)_normalizePath:(NSString *)path {
     if (![path hasPrefix:@"/"]) {
         // Paths always being with "/", so help out people who forget it
