@@ -353,7 +353,7 @@ static NSPredicate* webViewProxyLoopDetection;
 }
 
 
-+(void)handleRequestsMatchingTest:(BOOL (^)(id))testBlock handler:(WVPHandler)handler
++(void)handleRequestsMatchingTest:(BOOL (^)(NSURL *url))testBlock handler:(WVPHandler)handler
 {
     [requestMatchers addObject:[WVRequestMatcher matchWithTest:testBlock handler:handler]];
 }
