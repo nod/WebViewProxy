@@ -288,15 +288,7 @@ static NSPredicate* webViewUserAgentTest;
 - (id)initWithRequest:(NSURLRequest *)request cachedResponse:(NSCachedURLResponse *)cachedResponse client:(id<NSURLProtocolClient>)client {
     if (self = [super initWithRequest:request cachedResponse:cachedResponse client:client]) {
         // TODO How to handle cachedResponse?
-        _correctedRequest = request.mutableCopy;
-//        NSString* correctedFragment;
-//        if (_correctedRequest.URL.fragment) {
-//            correctedFragment = @"__webviewproxyreq__";
-//        } else {
-//            correctedFragment = @"#__webviewproxyreq__";
-//        }
-//        _correctedRequest.URL = [NSURL URLWithString:[request.URL.absoluteString stringByAppendingString:correctedFragment]];
-
+        _correctedRequest = [request mutableCopy];
         [_correctedRequest addValue:@"All your base are belong to us" forHTTPHeaderField:@"AppDidProxyBefore"];
         self.requestMatcher = [self.class findRequestMatcher:request.URL];
         self.proxyResponse = [[WVPResponse alloc] _initWithRequest:_correctedRequest protocol:self];
