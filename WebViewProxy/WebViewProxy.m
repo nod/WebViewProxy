@@ -270,7 +270,7 @@ static NSPredicate* webViewProxyLoopDetection;
 + (BOOL)canInitWithRequest:(NSURLRequest *)request {
     NSString* userAgent = request.allHTTPHeaderFields[@"User-Agent"];
     if (userAgent && ![webViewUserAgentTest evaluateWithObject:userAgent]) { return NO; }
-    if ([webViewProxyLoopDetection evaluateWithObject:request.URL]) {
+    if ([request valueForHTTPHeaderField:@"AppDidProxyBefore"]) {
     
         return NO;
     
@@ -290,14 +290,15 @@ static NSPredicate* webViewProxyLoopDetection;
     if (self = [super initWithRequest:request cachedResponse:cachedResponse client:client]) {
         // TODO How to handle cachedResponse?
         _correctedRequest = request.mutableCopy;
-        NSString* correctedFragment;
-        if (_correctedRequest.URL.fragment) {
-            correctedFragment = @"__webviewproxyreq__";
-        } else {
-            correctedFragment = @"#__webviewproxyreq__";
-        }
-        _correctedRequest.URL = [NSURL URLWithString:[request.URL.absoluteString stringByAppendingString:correctedFragment]];
+//        NSString* correctedFragment;
+//        if (_correctedRequest.URL.fragment) {
+//            correctedFragment = @"__webviewproxyreq__";
+//        } else {
+//            correctedFragment = @"#__webviewproxyreq__";
+//        }
+//        _correctedRequest.URL = [NSURL URLWithString:[request.URL.absoluteString stringByAppendingString:correctedFragment]];
 
+        [_correctedRequest addValue:@"All your base are belong to us" forHTTPHeaderField:@"AppDidProxyBefore"];
         self.requestMatcher = [self.class findRequestMatcher:request.URL];
         self.proxyResponse = [[WVPResponse alloc] _initWithRequest:request protocol:self];
     }
