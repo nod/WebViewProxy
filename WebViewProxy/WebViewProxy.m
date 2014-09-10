@@ -2,7 +2,6 @@
 
 static NSMutableArray* requestMatchers;
 static NSPredicate* webViewUserAgentTest;
-static NSPredicate* webViewProxyLoopDetection;
 
 // A request matcher, which matches a UIWebView request to a registered WebViewProxyHandler
 
@@ -300,7 +299,7 @@ static NSPredicate* webViewProxyLoopDetection;
 
         [_correctedRequest addValue:@"All your base are belong to us" forHTTPHeaderField:@"AppDidProxyBefore"];
         self.requestMatcher = [self.class findRequestMatcher:request.URL];
-        self.proxyResponse = [[WVPResponse alloc] _initWithRequest:request protocol:self];
+        self.proxyResponse = [[WVPResponse alloc] _initWithRequest:_correctedRequest protocol:self];
     }
     return self;
 }
@@ -325,7 +324,6 @@ static NSPredicate* webViewProxyLoopDetection;
 + (void)initialize {
     requestMatchers = [NSMutableArray array];
     webViewUserAgentTest = [NSPredicate predicateWithFormat:@"self MATCHES '^Mozilla.*Mac OS X.*'"];
-    webViewProxyLoopDetection = [NSPredicate predicateWithFormat:@"self.fragment MATCHES '__webviewproxyreq__'"];
     // e.g. "Mozilla/5.0 (iPhone; CPU iPhone OS 6_0 like Mac OS X) AppleWebKit/536.26 (KHTML, like Gecko) Mobile/10A403"
     [NSURLProtocol registerClass:[WebViewProxyURLProtocol class]];
 }
