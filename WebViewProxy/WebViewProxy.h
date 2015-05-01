@@ -44,4 +44,8 @@ typedef void (^WVPHandler)(NSURLRequest* req, WVPResponse* res);
 + (void) handleRequestsWithHost:(NSString*)host path:(NSString*)path handler:(WVPHandler)handler;
 + (void) handleRequestsWithHost:(NSString*)host pathPrefix:(NSString*)pathPrefix handler:(WVPHandler)handler;
 + (void) handleRequestsMatching:(NSPredicate*)predicate handler:(WVPHandler)handler;
+
++ (void) handleRequestsPassingTest:(BOOL (^)(NSURL *url)) testBlock
+                            handler:(WVPHandler)handler;
+
 @end
